@@ -1,0 +1,138 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.5rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  transition: width 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: 72px;
+  padding: 2rem 1rem;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}
+
+.sidebar.collapsed .topBar {
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 0.5rem;
+}
+
+.logoIcon {
+  width: 40px;
+  height: 40px;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo h1 {
+  font-size: 1.1rem;
+  letter-spacing: 0.05rem;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.logo span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.toggleBtn {
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.toggleBtn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.userInfo {
+  padding: 0 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.userName {
+  font-size: 0.875rem;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.navItem.iconOnly {
+  justify-content: center;
+  gap: 0;
+  padding: 0.875rem;
+}
+
+.navItem:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.navItem.active {
+  color: var(--primary);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
