@@ -1,14 +1,14 @@
 'use server';
 
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
 export async function deleteFecho(id: number) {
   try {
-    db.transaction(() => {
-      db.prepare('DELETE FROM fecho_turno_itens WHERE fecho_id = ?').run(id);
-      db.prepare('DELETE FROM fecho_turno WHERE id = ?').run(id);
-    })();
+    await transaction(async () => {
+      await run('DELETE FROM fecho_turno_itens WHERE fecho_id = ?', [id]);
+      await run('DELETE FROM fecho_turno WHERE id = ?', [id]);
+    });
     revalidatePath('/fecho/historico');
     return { success: true };
   } catch (error: any) {

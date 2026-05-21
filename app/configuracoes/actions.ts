@@ -1,6 +1,6 @@
 'use server';
 
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 
 export interface Configuracoes {
   estoque_minimo_padrao: number;
@@ -9,7 +9,7 @@ export interface Configuracoes {
 }
 
 export async function getConfiguracoes(): Promise<Configuracoes> {
-  const config = db.prepare('SELECT * FROM configuracoes WHERE id = 1').get() as any;
+  const config = await get('SELECT * FROM configuracoes WHERE id = 1') as any;
   
   if (!config) {
     const defaultConfig: Configuracoes = {
@@ -17,8 +17,8 @@ export async function getConfiguracoes(): Promise<Configuracoes> {
       limite_fiado_padrao: 5000,
       nome_empresa: 'Bar Doce Lar'
     };
-    db.prepare('INSERT INTO configuracoes (estoque_minimo_padrao, limite_fiado_padrao, nome_empresa) VALUES (?, ?, ?)')
-      .run(defaultConfig.estoque_minimo_padrao, defaultConfig.limite_fiado_padrao, defaultConfig.nome_empresa);
+    await run('INSERT INTO configuracoes (estoque_minimo_padrao, limite_fiado_padrao, nome_empresa) VALUES (?, ?, ?)',
+      [defaultConfig.estoque_minimo_padrao, defaultConfig.limite_fiado_padrao, defaultConfig.nome_empresa]);
     return defaultConfig;
   }
   
@@ -30,18 +30,17 @@ export async function getConfiguracoes(): Promise<Configuracoes> {
 }
 
 export async function salvarConfiguracoes(data: Configuracoes) {
-  db.prepare(`
+  await run(`
     UPDATE configuracoes 
     SET estoque_minimo_padrao = ?, limite_fiado_padrao = ?, nome_empresa = ?
     WHERE id = 1
-  `).run(data.estoque_minimo_padrao, data.limite_fiado_padrao, data.nome_empresa);
+  `, [data.estoque_minimo_padrao, data.limite_fiado_padrao, data.nome_empresa]);
   
   return { success: true };
 }
 
 export async function aplicarEstoqueMinimoPadrao() {
   const config = await getConfiguracoes();
-  db.prepare('UPDATE produtos SET estoque_minimo = ?')
-    .run(config.estoque_minimo_padrao);
+  await run('UPDATE produtos SET estoque_minimo = ?', [config.estoque_minimo_padrao]);
   return { success: true, message: `Aplicado ${config.estoque_minimo_padrao} a todos os produtos` };
 }

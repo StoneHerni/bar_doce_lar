@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import FechoClient from './FechoClient';
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 
 interface User {
   id: number;
@@ -31,7 +31,7 @@ export default async function FechoPage() {
   if (user.tipo === 'admin') redirect('/');
 
   // 3. Carrega apenas os produtos ativos (ativo = 1) para a lista de contagem física do turno
-  const produtos = db.prepare('SELECT id, nome, estoque_atual FROM produtos WHERE ativo = 1 ORDER BY nome').all() as Produto[];
+  const produtos = await all('SELECT id, nome, estoque_atual FROM produtos WHERE ativo = 1 ORDER BY nome') as Produto[];
 
   return <FechoClient produtos={produtos} user={user} />;
 }

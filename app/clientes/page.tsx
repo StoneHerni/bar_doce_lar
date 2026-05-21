@@ -1,15 +1,15 @@
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 import CustomersClient from './CustomersClient';
 import { cookies } from 'next/headers';
 
 async function getCustomersWithDebt() {
-  return db.prepare(`
+  return await all(`
     SELECT 
       c.*, 
       IFNULL((SELECT SUM(divida) FROM vendas WHERE cliente_id = c.id AND divida > 0), 0) as divida_total
     FROM clientes c
     ORDER BY divida_total DESC, c.nome ASC
-  `).all() as any[];
+  `) as any[];
 }
 
 export default async function CustomersPage() {

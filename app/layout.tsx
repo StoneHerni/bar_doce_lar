@@ -6,8 +6,6 @@ import { cookies } from "next/headers";
 
 export const dynamic = 'force-dynamic';
 
-try { initDb(); } catch (e) { console.error('initDb error:', e); }
-
 interface User {
   id: number;
   nome: string;
@@ -25,6 +23,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  try { await initDb(); } catch (e) { console.error('initDb error:', e); }
+
   const cookieStore = await cookies();
   const userCookie = cookieStore.get('user');
   let user: User | null = null;

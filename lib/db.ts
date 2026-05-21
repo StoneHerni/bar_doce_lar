@@ -1,14 +1,50 @@
-import Database from 'better-sqlite3';
+import { createClient } from '@libsql/client';
 import path from 'path';
 import { ADMIN_CREDENTIALS, FUNCIONARIO_CREDENTIALS } from './config';
 
-const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'bar_doce_lar.db');
+const url = process.env.TURSO_DATABASE_URL || `file:${path.join(process.cwd(), 'bar_doce_lar.db')}`;
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
+const db = createClient({ url, authToken, intMode: 'number' });
 
-export function initDb() {
-  db.exec(`
+export async function all(sql: string, args?: any[]) {
+  const rs = await db.execute({ sql, args });
+  return rs.rows as any[];
+}
+
+export async function get(sql: string, args?: any[]) {
+  const rs = await db.execute({ sql, args });
+  return (rs.rows[0] ?? null) as any;
+}
+
+export async function run(sql: string, args?: any[]) {
+  const rs = await db.execute({ sql, args });
+  return {
+    lastInsertRowid: rs.lastInsertRowid !== undefined ? Number(rs.lastInsertRowid) : undefined,
+    changes: rs.rowsAffected,
+  };
+}
+
+export async function exec(sql: string) {
+  await db.execute(sql);
+}
+
+export async function transaction<T>(fn: () => Promise<T>): Promise<T> {
+  const tx = await db.transaction('write');
+  try {
+    const result = await fn();
+    await tx.commit();
+    return result;
+  } catch (e) {
+    await tx.rollback();
+    throw e;
+  } finally {
+    tx.close();
+  }
+}
+
+export async function initDb() {
+  await exec(`
     CREATE TABLE IF NOT EXISTS grades (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT UNIQUE,
@@ -146,84 +182,76 @@ export function initDb() {
     );
   `);
 
-  // Migrations — adiciona colunas novas a tabelas existentes
-  const prodCols = db.prepare("PRAGMA table_info(produtos)").all() as { name: string }[];
-  const colNames = prodCols.map(c => c.name);
+  // Migrations
+  const tableInfo = await all("PRAGMA table_info(produtos)") as { name: string }[];
+  const colNames = tableInfo.map(c => c.name);
   if (!colNames.includes('grade_id')) {
-    db.exec('ALTER TABLE produtos ADD COLUMN grade_id INTEGER REFERENCES grades(id)');
+    await exec('ALTER TABLE produtos ADD COLUMN grade_id INTEGER REFERENCES grades(id)');
   }
-if (!colNames.includes('garrafas_por_grade')) {
-    db.exec('ALTER TABLE produtos ADD COLUMN garrafas_por_grade INTEGER DEFAULT 1');
+  if (!colNames.includes('garrafas_por_grade')) {
+    await exec('ALTER TABLE produtos ADD COLUMN garrafas_por_grade INTEGER DEFAULT 1');
   }
   if (!colNames.includes('ativo')) {
-    db.exec('ALTER TABLE produtos ADD COLUMN ativo INTEGER DEFAULT 1');
+    await exec('ALTER TABLE produtos ADD COLUMN ativo INTEGER DEFAULT 1');
   }
 
-  const clienteCols = db.prepare("PRAGMA table_info(clientes)").all() as { name: string }[];
+  const clienteCols = await all("PRAGMA table_info(clientes)") as { name: string }[];
   const clienteColNames = clienteCols.map(c => c.name);
   if (!clienteColNames.includes('prazo_pagamento')) {
-    db.exec('ALTER TABLE clientes ADD COLUMN prazo_pagamento TEXT');
+    await exec('ALTER TABLE clientes ADD COLUMN prazo_pagamento TEXT');
   }
 
-  // Migração para tabela compras - adiciona fornecedor_id e migra fornecedores antigos se existirem
-  const comprasCols = db.prepare("PRAGMA table_info(compras)").all() as { name: string }[];
+  // Migration para tabela compras
+  const comprasCols = await all("PRAGMA table_info(compras)") as { name: string }[];
   const comprasColNames = comprasCols.map(c => c.name);
   if (!comprasColNames.includes('fornecedor_id')) {
-    db.exec('ALTER TABLE compras ADD COLUMN fornecedor_id INTEGER REFERENCES fornecedores(id)');
-    
+    await exec('ALTER TABLE compras ADD COLUMN fornecedor_id INTEGER REFERENCES fornecedores(id)');
+
     if (comprasColNames.includes('fornecedor')) {
-      const oldPurchases = db.prepare("SELECT DISTINCT fornecedor FROM compras WHERE fornecedor IS NOT NULL AND fornecedor != ''").all() as { fornecedor: string }[];
-      
-      const insertFornecedor = db.prepare("INSERT INTO fornecedores (nome) VALUES (?)");
-      const findFornecedor = db.prepare("SELECT id FROM fornecedores WHERE nome = ?");
-      const updateCompraFornecedor = db.prepare("UPDATE compras SET fornecedor_id = ? WHERE fornecedor = ?");
-      
+      const oldPurchases = await all("SELECT DISTINCT fornecedor FROM compras WHERE fornecedor IS NOT NULL AND fornecedor != ''") as { fornecedor: string }[];
+
       for (const row of oldPurchases) {
         let fornId: number | undefined;
-        const existing = findFornecedor.get(row.fornecedor) as { id: number } | undefined;
+        const existing = await get("SELECT id FROM fornecedores WHERE nome = ?", [row.fornecedor]) as { id: number } | undefined;
         if (existing) {
           fornId = existing.id;
         } else {
           try {
-            const res = insertFornecedor.run(row.fornecedor);
+            const res = await run("INSERT INTO fornecedores (nome) VALUES (?)", [row.fornecedor]);
             fornId = res.lastInsertRowid as number;
           } catch (e) {
             console.error('Erro ao migrar fornecedor:', row.fornecedor, e);
           }
         }
         if (fornId) {
-          updateCompraFornecedor.run(fornId, row.fornecedor);
+          await run("UPDATE compras SET fornecedor_id = ? WHERE fornecedor = ?", [fornId, row.fornecedor]);
         }
       }
     }
   }
 
-  // Tabela de preços por quantidade
-  try { db.exec('CREATE TABLE IF NOT EXISTS produto_precos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER NOT NULL, quantidade_minima INTEGER NOT NULL, preco REAL NOT NULL)'); } catch {}
-  try { db.exec('CREATE TABLE IF NOT EXISTS pos_produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER UNIQUE NOT NULL, preco_venda REAL NOT NULL, ativo INTEGER DEFAULT 1)'); } catch {}
+  try { await exec('CREATE TABLE IF NOT EXISTS produto_precos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER NOT NULL, quantidade_minima INTEGER NOT NULL, preco REAL NOT NULL)'); } catch {}
+  try { await exec('CREATE TABLE IF NOT EXISTS pos_produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER UNIQUE NOT NULL, preco_venda REAL NOT NULL, ativo INTEGER DEFAULT 1)'); } catch {}
 
-  const count = db.prepare('SELECT COUNT(*) as count FROM produtos').get() as { count: number };
-  
+  const count = await get('SELECT COUNT(*) as count FROM produtos') as { count: number };
+
   if (count.count === 0) {
-    const insert = db.prepare('INSERT INTO produtos (nome, preco, estoque_atual) VALUES (?, ?, ?)');
     const produtosPadrao = [
-        ["Cana joy", 300], ["Yala", 300], ["Regal", 250], ["Top", 200],
-        ["Coca-cola", 300], ["Smirnoff", 1000], ["Vat", 500], ["Cuca em Lata", 500],
-        ["Bosster em lata", 600], ["Fresco pequeno", 800], ["Pias", 700],
-        ["Dikota", 600], ["Valmonte", 800], ["Fresco grande", 2300],
-        ["Monte godel", 2300], ["Festa", 500], ["Chefe grande", 600],
-        ["Smirnof g", 500], ["Doppel", 333.33], ["Cuca", 333.33], ["Eka", 333.33],
-        ["Nocal", 333.33], ["booster", 333.33], ["Tigra", 300], ["N.Natural", 800],
-        ["Água", 150]
+      ["Cana joy", 300], ["Yala", 300], ["Regal", 250], ["Top", 200],
+      ["Coca-cola", 300], ["Smirnoff", 1000], ["Vat", 500], ["Cuca em Lata", 500],
+      ["Bosster em lata", 600], ["Fresco pequeno", 800], ["Pias", 700],
+      ["Dikota", 600], ["Valmonte", 800], ["Fresco grande", 2300],
+      ["Monte godel", 2300], ["Festa", 500], ["Chefe grande", 600],
+      ["Smirnof g", 500], ["Doppel", 333.33], ["Cuca", 333.33], ["Eka", 333.33],
+      ["Nocal", 333.33], ["booster", 333.33], ["Tigra", 300], ["N.Natural", 800],
+      ["Água", 150]
     ];
 
-    const insertMany = db.transaction((prods) => {
-      for (const [nome, preco] of prods) {
-        insert.run(nome, preco, 50);
+    await transaction(async () => {
+      for (const [nome, preco] of produtosPadrao) {
+        await run('INSERT INTO produtos (nome, preco, estoque_atual) VALUES (?, ?, ?)', [nome, preco, 50]);
       }
     });
-
-    insertMany(produtosPadrao);
 
     const gradesPadrao = [
       ['Caixa 24', 24],
@@ -231,24 +259,22 @@ if (!colNames.includes('garrafas_por_grade')) {
       ['Pack 6', 6],
       ['Pack 4', 4]
     ];
-    const insertGrade = db.prepare('INSERT INTO grades (nome, garrafas_por_grade) VALUES (?, ?)');
     for (const [nome, qtd] of gradesPadrao) {
-      insertGrade.run(nome, qtd);
+      await run('INSERT INTO grades (nome, garrafas_por_grade) VALUES (?, ?)', [nome, qtd]);
     }
   }
 
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM usuarios').get() as { count: number };
+  const userCount = await get('SELECT COUNT(*) as count FROM usuarios') as { count: number };
   if (userCount.count === 0) {
-    db.prepare('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)')
-      .run('Administrador', ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.senha, 'admin');
-    db.prepare('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)')
-      .run('Funcionario', FUNCIONARIO_CREDENTIALS.email, FUNCIONARIO_CREDENTIALS.senha, 'funcionario');
+    await run('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)',
+      ['Administrador', ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.senha, 'admin']);
+    await run('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)',
+      ['Funcionario', FUNCIONARIO_CREDENTIALS.email, FUNCIONARIO_CREDENTIALS.senha, 'funcionario']);
   } else {
-    // Sincroniza sempre as credenciais do config com a BD
-    db.prepare('UPDATE usuarios SET email = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)')
-      .run(ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.senha, 'admin', 'admin');
-    db.prepare('UPDATE usuarios SET email = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)')
-      .run(FUNCIONARIO_CREDENTIALS.email, FUNCIONARIO_CREDENTIALS.senha, 'funcionario', 'funcionario');
+    await run('UPDATE usuarios SET email = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)',
+      [ADMIN_CREDENTIALS.email, ADMIN_CREDENTIALS.senha, 'admin', 'admin']);
+    await run('UPDATE usuarios SET email = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)',
+      [FUNCIONARIO_CREDENTIALS.email, FUNCIONARIO_CREDENTIALS.senha, 'funcionario', 'funcionario']);
   }
 }
 

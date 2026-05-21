@@ -1,18 +1,17 @@
 import GradesClient from './GradesClient';
-import db from '@/lib/db';
-import { initDb } from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export default async function GradesPage() {
-  initDb();
-  const grades = db.prepare('SELECT * FROM grades ORDER BY nome').all();
-  const products = db.prepare(`
+  await initDb();
+  const grades = await all('SELECT * FROM grades ORDER BY nome');
+  const products = await all(`
     SELECT p.*, g.nome as grade_nome, g.garrafas_por_grade 
     FROM produtos p 
     LEFT JOIN grades g ON g.id = p.grade_id 
     WHERE p.ativo = 1
     ORDER BY p.nome
-  `).all();
+  `);
 
   const cookieStore = await cookies();
   const userCookie = cookieStore.get('user');
@@ -25,7 +24,7 @@ export default async function GradesPage() {
     } catch {}
   }
 
-  const fornecedores = db.prepare('SELECT * FROM fornecedores ORDER BY nome').all();
+  const fornecedores = await all('SELECT * FROM fornecedores ORDER BY nome');
 
   return (
     <GradesClient grades={grades as any[]} products={products as any[]} userRole={userRole} fornecedores={fornecedores as any[]} />

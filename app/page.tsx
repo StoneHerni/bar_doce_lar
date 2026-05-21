@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 import { 
   TrendingUp, 
   AlertTriangle, 
@@ -22,32 +22,32 @@ async function getDashboardData() {
   const today = new Date().toISOString().split('T')[0];
 
   // 1. Total faturado em vendas hoje
-  const salesToday = db.prepare("SELECT SUM(total) as total FROM vendas WHERE data LIKE ?").get(`${today}%`) as { total: number };
+  const salesToday = await get("SELECT SUM(total) as total FROM vendas WHERE data LIKE ?", [`${today}%`]) as { total: number };
   
   // 2. Total acumulado de dívidas (fiado pendente) no sistema
-  const pendingDebts = db.prepare('SELECT SUM(divida) as total FROM vendas WHERE divida > 0').get() as { total: number };
+  const pendingDebts = await get('SELECT SUM(divida) as total FROM vendas WHERE divida > 0') as { total: number };
   
   // 3. Contagem de produtos ativos com stock abaixo do mínimo estipulado
-  const lowStock = db.prepare('SELECT COUNT(*) as count FROM produtos WHERE estoque_atual < estoque_minimo AND ativo = 1').get() as { count: number };
+  const lowStock = await get('SELECT COUNT(*) as count FROM produtos WHERE estoque_atual < estoque_minimo AND ativo = 1') as { count: number };
   
   // 4. Contagem de clientes individuais que possuem alguma dívida pendente
-  const customerCount = db.prepare(`
+  const customerCount = await get(`
     SELECT COUNT(*) as count FROM clientes 
     WHERE (SELECT SUM(divida) FROM vendas WHERE cliente_id = clientes.id AND divida > 0) > 0
-  `).get() as { count: number };
+  `) as { count: number };
 
   // 5. Lista de clientes com prazos de pagamento de fiado expirados (vencidos hoje ou antes)
-  const overdueClients = db.prepare(`
+  const overdueClients = await all(`
     SELECT c.nome, c.prazo_pagamento,
       IFNULL((SELECT SUM(divida) FROM vendas WHERE cliente_id = c.id AND divida > 0), 0) as divida_total
     FROM clientes c
     WHERE c.prazo_pagamento IS NOT NULL AND c.prazo_pagamento <= ? 
       AND (SELECT SUM(divida) FROM vendas WHERE cliente_id = c.id AND divida > 0) > 0
     ORDER BY c.prazo_pagamento ASC
-  `).all(today) as { nome: string; prazo_pagamento: string; divida_total: number }[];  
+  `, [today]) as { nome: string; prazo_pagamento: string; divida_total: number }[];  
 
   // 6. Últimas 5 vendas registadas no sistema
-  const recentSales = db.prepare(`
+  const recentSales = await all(`
     SELECT v.*, 
       (SELECT GROUP_CONCAT(vi.quantidade || 'x ' || p.nome, ', ') 
        FROM venda_itens vi 
@@ -55,33 +55,33 @@ async function getDashboardData() {
        WHERE vi.venda_id = v.id) as produtos_vendidos
     FROM vendas v 
     ORDER BY v.id DESC LIMIT 5
-  `).all() as any[];
+  `) as any[];
 
   // 7. Lista detalhada de produtos ativos com stock abaixo do mínimo (para alertas visuais)
-  const lowStockProducts = db.prepare(`
+  const lowStockProducts = await all(`
     SELECT nome, estoque_atual, estoque_minimo 
     FROM produtos 
     WHERE estoque_atual < estoque_minimo AND ativo = 1
     ORDER BY estoque_atual ASC
-  `).all() as any[];
+  `) as any[];
 
   // 8. Informações sobre o último fecho de turno feito por um funcionário
-  const lastFecho = db.prepare(`
+  const lastFecho = await get(`
     SELECT ft.*, u.nome as funcionario_nome
     FROM fecho_turno ft
     JOIN usuarios u ON ft.funcionario_id = u.id
     ORDER BY ft.id DESC LIMIT 1
-  `).get() as any;
+  `) as any;
 
   // 9. Itens e quantidades contadas no último fecho de turno
   let fechoItens: any[] = [];
   if (lastFecho) {
-    fechoItens = db.prepare(`
+    fechoItens = await all(`
       SELECT fti.*, p.nome as produto_nome
       FROM fecho_turno_itens fti
       JOIN produtos p ON fti.produto_id = p.id
       WHERE fti.fecho_id = ?
-    `).all(lastFecho.id);
+    `, [lastFecho.id]);
   }
 
   return {

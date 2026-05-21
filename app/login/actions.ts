@@ -1,6 +1,6 @@
 'use server';
 
-import db from '@/lib/db';
+import { all, get, run, exec, transaction, initDb } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export interface User {
@@ -11,8 +11,7 @@ export interface User {
 }
 
 export async function login(email: string, senha: string) {
-  const user = db.prepare('SELECT id, nome, email, tipo FROM usuarios WHERE email = ? AND senha = ? AND ativo = 1')
-    .get(email, senha) as User | undefined;
+  const user = await get('SELECT id, nome, email, tipo FROM usuarios WHERE email = ? AND senha = ? AND ativo = 1', [email, senha]) as User | undefined;
 
   if (!user) {
     return { success: false, error: 'Email ou senha incorretos' };
