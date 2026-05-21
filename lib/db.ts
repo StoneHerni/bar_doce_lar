@@ -26,7 +26,7 @@ export async function run(sql: string, args?: any[]) {
 }
 
 export async function exec(sql: string) {
-  await db.execute(sql);
+  await db.executeMultiple(sql);
 }
 
 export async function transaction<T>(fn: () => Promise<T>): Promise<T> {
