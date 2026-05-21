@@ -201,6 +201,12 @@ export async function initDb() {
     await exec('ALTER TABLE clientes ADD COLUMN prazo_pagamento TEXT');
   }
 
+  const vendasCols = await all("PRAGMA table_info(vendas)") as { name: string }[];
+  const vendasColNames = vendasCols.map(c => c.name);
+  if (!vendasColNames.includes('funcionario_id')) {
+    await exec('ALTER TABLE vendas ADD COLUMN funcionario_id INTEGER REFERENCES usuarios(id)');
+  }
+
   // Migration para tabela compras
   const comprasCols = await all("PRAGMA table_info(compras)") as { name: string }[];
   const comprasColNames = comprasCols.map(c => c.name);
