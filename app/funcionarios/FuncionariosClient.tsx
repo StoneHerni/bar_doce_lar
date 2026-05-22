@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, Users, Shield, User, ToggleLeft, ToggleRight, Key, X } from 'lucide-react';
+import { UserPlus, Users, Shield, User, ToggleLeft, ToggleRight, Key, X, Pencil } from 'lucide-react';
 import styles from './funcionarios.module.css';
-import { createFuncionario, toggleFuncionario, updateSenha, deleteFuncionario } from './actions';
+import { createFuncionario, toggleFuncionario, updateSenha, updateFuncionario, deleteFuncionario } from './actions';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 
@@ -25,6 +25,8 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
   const [error, setError] = useState('');
   const [passwordModal, setPasswordModal] = useState<{ open: boolean; userId: number | null; userName: string }>({ open: false, userId: null, userName: '' });
   const [novaSenha, setNovaSenha] = useState('');
+  const [editModal, setEditModal] = useState<{ open: boolean; func: Funcionario | null }>({ open: false, func: null });
+  const [editForm, setEditForm] = useState({ nome: '', email: '', tipo: 'funcionario' as 'admin' | 'funcionario', senha: '' });
 
   const handleCreate = async () => {
     if (!form.nome || !form.email || !form.senha) return;
@@ -84,6 +86,35 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
     }
   };
 
+  const openEditModal = (func: Funcionario) => {
+    setEditForm({ nome: func.nome, email: func.email, tipo: func.tipo, senha: '' });
+    setEditModal({ open: true, func });
+  };
+
+  const handleUpdate = async () => {
+    if (!editModal.func || !editForm.nome || !editForm.email) return;
+    setIsProcessing(true);
+    setError('');
+
+    const result = await updateFuncionario(
+      editModal.func.id,
+      editForm.nome,
+      editForm.email,
+      editForm.tipo,
+      editForm.senha || undefined
+    );
+
+    if (result.success) {
+      showToast('Funcionário atualizado com sucesso!', 'success');
+      setEditModal({ open: false, func: null });
+      setEditForm({ nome: '', email: '', tipo: 'funcionario', senha: '' });
+      router.refresh();
+    } else {
+      showToast(result.error || 'Erro ao atualizar', 'error');
+    }
+    setIsProcessing(false);
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -139,6 +170,9 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
                 </td>
                 <td>
                   <div className={styles.rowActions}>
+                    <button className={styles.actionBtn} title="Editar" onClick={() => openEditModal(func)}>
+                      <Pencil size={16} />
+                    </button>
                     <button className={styles.actionBtn} title="Alterar Senha" onClick={() => openPasswordModal(func)}>
                       <Key size={16} />
                     </button>
@@ -227,6 +261,61 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
             <div className={styles.modalActions}>
               <button className="btn-secondary" onClick={() => setPasswordModal({ open: false, userId: null, userName: '' })}>Cancelar</button>
               <button className="btn-primary" onClick={handleChangePassword} disabled={isProcessing}>
+                {isProcessing ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editModal.open && editModal.func && (
+        <div className={styles.modalOverlay}>
+          <div className={`glass-card ${styles.modal}`}>
+            <h2>Editar Funcionário</h2>
+            
+            {error && <div className={styles.error}>{error}</div>}
+
+            <div className={styles.formGroup}>
+              <label>Nome</label>
+              <input
+                type="text"
+                value={editForm.nome}
+                onChange={(e) => setEditForm({...editForm, nome: e.target.value})}
+                placeholder="Nome completo"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Email</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Tipo de Conta</label>
+              <select value={editForm.tipo} onChange={(e) => setEditForm({...editForm, tipo: e.target.value as 'admin' | 'funcionario'})}>
+                <option value="funcionario">Funcionário</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Nova Senha (deixe em branco para manter a atual)</label>
+              <input
+                type="password"
+                value={editForm.senha}
+                onChange={(e) => setEditForm({...editForm, senha: e.target.value})}
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className={styles.modalActions}>
+              <button className="btn-secondary" onClick={() => setEditModal({ open: false, func: null })}>Cancelar</button>
+              <button className="btn-primary" onClick={handleUpdate} disabled={isProcessing}>
                 {isProcessing ? 'Salvando...' : 'Salvar'}
               </button>
             </div>

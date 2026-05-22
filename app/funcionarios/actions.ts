@@ -39,6 +39,26 @@ export async function updateSenha(id: number, novaSenha: string) {
   }
 }
 
+export async function updateFuncionario(id: number, nome: string, email: string, tipo: 'admin' | 'funcionario', senha?: string) {
+  try {
+    const existing = await get('SELECT id FROM usuarios WHERE email = ? AND id != ?', [email, id]);
+    if (existing) {
+      return { success: false, error: 'Email já está em uso por outro funcionário' };
+    }
+
+    if (senha) {
+      await run('UPDATE usuarios SET nome = ?, email = ?, tipo = ?, senha = ? WHERE id = ?', [nome, email, tipo, senha, id]);
+    } else {
+      await run('UPDATE usuarios SET nome = ?, email = ?, tipo = ? WHERE id = ?', [nome, email, tipo, id]);
+    }
+
+    revalidatePath('/funcionarios');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function deleteFuncionario(id: number) {
   try {
     await run('DELETE FROM usuarios WHERE id = ?', [id]);
