@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, Users, Shield, User, ToggleLeft, ToggleRight, Key, X, Pencil } from 'lucide-react';
+import { UserPlus, Users, Shield, User, ToggleLeft, ToggleRight, X, Pencil } from 'lucide-react';
 import styles from './funcionarios.module.css';
-import { createFuncionario, toggleFuncionario, updateSenha, updateFuncionario, deleteFuncionario } from './actions';
+import { createFuncionario, toggleFuncionario, updateFuncionario, deleteFuncionario } from './actions';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 
@@ -23,8 +23,6 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
   const [form, setForm] = useState({ nome: '', email: '', senha: '', tipo: 'funcionario' as 'admin' | 'funcionario' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [passwordModal, setPasswordModal] = useState<{ open: boolean; userId: number | null; userName: string }>({ open: false, userId: null, userName: '' });
-  const [novaSenha, setNovaSenha] = useState('');
   const [editModal, setEditModal] = useState<{ open: boolean; func: Funcionario | null }>({ open: false, func: null });
   const [editForm, setEditForm] = useState({ nome: '', email: '', tipo: 'funcionario' as 'admin' | 'funcionario', senha: '' });
 
@@ -54,25 +52,6 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
       showToast(result.error || 'Erro ao atualizar', 'error');
     }
     router.refresh();
-  };
-
-  const openPasswordModal = (func: Funcionario) => {
-    setPasswordModal({ open: true, userId: func.id, userName: func.nome });
-    setNovaSenha('');
-  };
-
-  const handleChangePassword = async () => {
-    if (!passwordModal.userId || !novaSenha) return;
-    setIsProcessing(true);
-    const result = await updateSenha(passwordModal.userId, novaSenha);
-    if (result.success) {
-      showToast('Senha alterada com sucesso!', 'success');
-      setPasswordModal({ open: false, userId: null, userName: '' });
-      setNovaSenha('');
-    } else {
-      showToast(result.error || 'Erro ao alterar', 'error');
-    }
-    setIsProcessing(false);
   };
 
   const handleDelete = async (func: Funcionario) => {
@@ -173,9 +152,6 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
                     <button className={styles.actionBtn} title="Editar" onClick={() => openEditModal(func)}>
                       <Pencil size={16} />
                     </button>
-                    <button className={styles.actionBtn} title="Alterar Senha" onClick={() => openPasswordModal(func)}>
-                      <Key size={16} />
-                    </button>
                     <button className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Eliminar" onClick={() => handleDelete(func)}>
                       <X size={16} />
                     </button>
@@ -236,32 +212,6 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
               <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
               <button className="btn-primary" onClick={handleCreate} disabled={isProcessing}>
                 {isProcessing ? 'Criando...' : 'Criar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {passwordModal.open && (
-        <div className={styles.modalOverlay}>
-          <div className={`glass-card ${styles.modal}`}>
-            <h2>Alterar Senha</h2>
-            <p className={styles.modalSub}>{passwordModal.userName}</p>
-            
-            <div className={styles.formGroup}>
-              <label>Nova Senha</label>
-              <input
-                type="password"
-                value={novaSenha}
-                onChange={(e) => setNovaSenha(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div className={styles.modalActions}>
-              <button className="btn-secondary" onClick={() => setPasswordModal({ open: false, userId: null, userName: '' })}>Cancelar</button>
-              <button className="btn-primary" onClick={handleChangePassword} disabled={isProcessing}>
-                {isProcessing ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>
