@@ -270,17 +270,22 @@ export async function initDb() {
     }
   }
 
-  const userCount = await get('SELECT COUNT(*) as count FROM usuarios') as { count: number };
-  if (userCount.count === 0) {
-    await run('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)',
-      [ADMIN_CREDENTIALS.nome, 'admin@bar.com', ADMIN_CREDENTIALS.senha, 'admin']);
-    await run('INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, ?, 1)',
-      [FUNCIONARIO_CREDENTIALS.nome, 'func@bar.com', FUNCIONARIO_CREDENTIALS.senha, 'funcionario']);
+  const adminUser = await get("SELECT id FROM usuarios WHERE tipo = 'admin'") as { id: number } | undefined;
+  if (!adminUser) {
+    await run("INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, 'admin', 1)",
+      [ADMIN_CREDENTIALS.nome, 'admin@bar.com', ADMIN_CREDENTIALS.senha]);
   } else {
-    await run('UPDATE usuarios SET nome = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)',
-      [ADMIN_CREDENTIALS.nome, ADMIN_CREDENTIALS.senha, 'admin', 'admin']);
-    await run('UPDATE usuarios SET nome = ?, senha = ?, ativo = 1 WHERE tipo = ? AND id = (SELECT MIN(id) FROM usuarios WHERE tipo = ?)',
-      [FUNCIONARIO_CREDENTIALS.nome, FUNCIONARIO_CREDENTIALS.senha, 'funcionario', 'funcionario']);
+    await run('UPDATE usuarios SET nome = ?, senha = ?, ativo = 1 WHERE id = ?',
+      [ADMIN_CREDENTIALS.nome, ADMIN_CREDENTIALS.senha, adminUser.id]);
+  }
+
+  const funcUser = await get("SELECT id FROM usuarios WHERE tipo = 'funcionario'") as { id: number } | undefined;
+  if (!funcUser) {
+    await run("INSERT INTO usuarios (nome, email, senha, tipo, ativo) VALUES (?, ?, ?, 'funcionario', 1)",
+      [FUNCIONARIO_CREDENTIALS.nome, 'func@bar.com', FUNCIONARIO_CREDENTIALS.senha]);
+  } else {
+    await run('UPDATE usuarios SET nome = ?, senha = ?, ativo = 1 WHERE id = ?',
+      [FUNCIONARIO_CREDENTIALS.nome, FUNCIONARIO_CREDENTIALS.senha, funcUser.id]);
   }
 }
 
