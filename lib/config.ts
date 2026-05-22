@@ -1,6 +1,6 @@
 export const ADMIN_CREDENTIALS = {
-  nome: 'Administrador',
-  senha: 'herny'
+  nome: 'josemar',
+  senha: '123'
 };
 
 export const FUNCIONARIO_CREDENTIALS = {
