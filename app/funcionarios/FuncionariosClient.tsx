@@ -11,6 +11,7 @@ interface Funcionario {
   id: number;
   nome: string;
   email: string;
+  senha: string;
   tipo: 'admin' | 'funcionario';
   ativo: number;
   created_at: string;
@@ -112,6 +113,7 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
             <tr>
               <th>Funcionário</th>
               <th>Email</th>
+              <th>Senha</th>
               <th>Tipo</th>
               <th>Estado</th>
               <th>Ações</th>
@@ -129,6 +131,7 @@ export default function FuncionariosClient({ initialFuncionarios }: { initialFun
                   </div>
                 </td>
                 <td>{func.email}</td>
+                <td><code>{func.senha}</code></td>
                 <td>
                   <span className={`${styles.badge} ${func.tipo === 'admin' ? styles.admin : styles.func}`}>
                     {func.tipo === 'admin' ? <Shield size={14} /> : <User size={14} />}
