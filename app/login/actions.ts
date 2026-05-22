@@ -10,11 +10,11 @@ export interface User {
   tipo: 'admin' | 'funcionario';
 }
 
-export async function login(email: string, senha: string) {
-  const user = await get('SELECT id, nome, email, tipo FROM usuarios WHERE email = ? AND senha = ? AND ativo = 1', [email, senha]) as User | undefined;
+export async function login(nome: string, senha: string) {
+  const user = await get('SELECT id, nome, email, tipo FROM usuarios WHERE nome = ? AND senha = ? AND ativo = 1', [nome, senha]) as User | undefined;
 
   if (!user) {
-    return { success: false, error: 'Email ou senha incorretos' };
+    return { success: false, error: 'Nome ou senha incorretos' };
   }
 
   const cookieStore = await cookies();

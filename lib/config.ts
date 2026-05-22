@@ -1,9 +1,9 @@
 export const ADMIN_CREDENTIALS = {
-  email: 'josemar@gmail.com',
+  nome: 'Administrador',
   senha: 'herny'
 };
 
 export const FUNCIONARIO_CREDENTIALS = {
-  email: 'func@bar.com',
+  nome: 'Funcionario',
   senha: 'func123'
 };

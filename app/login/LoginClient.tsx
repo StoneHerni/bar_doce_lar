@@ -8,7 +8,7 @@ import { login, clearUserCookie } from './actions';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function LoginPage() {
     setError('');
     setIsLoading(true);
 
-    const result = await login(email, senha);
+    const result = await login(nome, senha);
 
     if (result.success) {
       router.push('/');
@@ -51,12 +51,12 @@ export default function LoginPage() {
           {error && <div className={styles.error}>{error}</div>}
           
           <div className={styles.formGroup}>
-            <label>Email</label>
+            <label>Nome</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@exemplo.com"
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Seu nome"
               required
             />
           </div>
