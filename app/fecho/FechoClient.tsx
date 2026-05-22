@@ -105,9 +105,9 @@ export default function FechoClient({ produtos, user }: { produtos: Produto[]; u
       <div className="glass-card">
         <div className={styles.tableHeader}>
           <span>Produto</span>
-          <span style={{ textAlign: 'center' }}>Prateleira</span>
-          <span style={{ textAlign: 'center' }}>Arca</span>
-          <span style={{ textAlign: 'center' }}>Restou (Total)</span>
+          <span style={{ textAlign: 'center' }}>Restou Prateleira</span>
+          <span style={{ textAlign: 'center' }}>Restou Arca</span>
+          <span style={{ textAlign: 'center' }}>Total</span>
         </div>
 
         <div className={styles.itemsList}>
@@ -116,8 +116,7 @@ export default function FechoClient({ produtos, user }: { produtos: Produto[]; u
             return (
               <div key={produto.id} className={styles.itemRow}>
                 <span className={styles.produtoNome}>{produto.nome}</span>
-                
-                {/* Qtd. Prateleira */}
+
                 <div className={styles.quantidadeInput}>
                   <button onClick={() => updateQuantidade(produto.id, 'quantidade_prateleira', (item?.quantidade_prateleira || 0) - 1)}>-</button>
                   <input
@@ -129,7 +128,6 @@ export default function FechoClient({ produtos, user }: { produtos: Produto[]; u
                   <button onClick={() => updateQuantidade(produto.id, 'quantidade_prateleira', (item?.quantidade_prateleira || 0) + 1)}>+</button>
                 </div>
 
-                {/* Qtd. Arca */}
                 <div className={styles.quantidadeInput}>
                   <button onClick={() => updateQuantidade(produto.id, 'quantidade_arca', (item?.quantidade_arca || 0) - 1)}>-</button>
                   <input
@@ -141,7 +139,6 @@ export default function FechoClient({ produtos, user }: { produtos: Produto[]; u
                   <button onClick={() => updateQuantidade(produto.id, 'quantidade_arca', (item?.quantidade_arca || 0) + 1)}>+</button>
                 </div>
 
-                {/* Total Leftover Badge */}
                 <div style={{ textAlign: 'center' }}>
                   <span className={styles.totalBadge}>{item?.quantidade || 0}</span>
                 </div>

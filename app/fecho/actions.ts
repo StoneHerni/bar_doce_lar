@@ -1,12 +1,12 @@
 'use server';
 
-import { all, get, run, exec, transaction, initDb } from '@/lib/db';
+import { all, run, transaction } from '@/lib/db';
 
 interface Item {
   produto_id: number;
   quantidade: number;
-  quantidade_prateleira?: number;
-  quantidade_arca?: number;
+  quantidade_prateleira: number;
+  quantidade_arca: number;
 }
 
 export async function createFechoTurno(data: {
@@ -30,13 +30,7 @@ export async function createFechoTurno(data: {
         await run(`
           INSERT INTO fecho_turno_itens (fecho_id, produto_id, quantidade, quantidade_prateleira, quantidade_arca)
           VALUES (?, ?, ?, ?, ?)
-        `, [
-          fechoId, 
-          item.produto_id, 
-          item.quantidade, 
-          item.quantidade_prateleira || 0, 
-          item.quantidade_arca || 0
-        ]);
+        `, [fechoId, item.produto_id, item.quantidade, item.quantidade_prateleira, item.quantidade_arca]);
       }
 
       return fechoId;

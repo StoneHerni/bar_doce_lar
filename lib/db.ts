@@ -239,6 +239,15 @@ export async function initDb() {
   try { await exec('CREATE TABLE IF NOT EXISTS produto_precos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER NOT NULL, quantidade_minima INTEGER NOT NULL, preco REAL NOT NULL)'); } catch {}
   try { await exec('CREATE TABLE IF NOT EXISTS pos_produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, produto_id INTEGER UNIQUE NOT NULL, preco_venda REAL NOT NULL, ativo INTEGER DEFAULT 1)'); } catch {}
 
+  const fechoItensCols = await all("PRAGMA table_info(fecho_turno_itens)") as { name: string }[];
+  const fechoItensColNames = fechoItensCols.map(c => c.name);
+  if (!fechoItensColNames.includes('quantidade_prateleira')) {
+    await exec('ALTER TABLE fecho_turno_itens ADD COLUMN quantidade_prateleira INTEGER DEFAULT 0');
+  }
+  if (!fechoItensColNames.includes('quantidade_arca')) {
+    await exec('ALTER TABLE fecho_turno_itens ADD COLUMN quantidade_arca INTEGER DEFAULT 0');
+  }
+
   const count = await get('SELECT COUNT(*) as count FROM produtos') as { count: number };
 
   if (count.count === 0) {
