@@ -9,12 +9,12 @@ const db = createClient({ url, authToken, intMode: 'number' });
 
 export async function all(sql: string, args?: any[]) {
   const rs = await db.execute({ sql, args });
-  return rs.rows as any[];
+  return rs.rows.map(r => ({ ...r } as any));
 }
 
 export async function get(sql: string, args?: any[]) {
   const rs = await db.execute({ sql, args });
-  return (rs.rows[0] ?? null) as any;
+  return rs.rows[0] ? { ...rs.rows[0] } as any : null;
 }
 
 export async function run(sql: string, args?: any[]) {
